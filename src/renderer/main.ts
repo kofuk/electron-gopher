@@ -1,3 +1,5 @@
+import {ipcRenderer} from 'electron';
+
 const gopherFrames = [new Image, new Image, new Image];
 for (const [i, f] of gopherFrames.entries()) {
     f.src = `out0${i + 1}.png`;
@@ -43,11 +45,11 @@ class GopherAnimator {
             ctx.scale(-1, 1);
             ctx.translate(-200, 0);
         }
-        const eFrameNum = this.walking ? (Math.sin(this.frameNum / 30 * Math.PI) * 2.3 >> 0) : 0;
+        const eFrameNum = this.walking ? (Math.sin(this.frameNum / 20 * Math.PI) * 2.3 >> 0) : 0;
         ctx.drawImage(gopherFrames[eFrameNum], 0, 0);
         ctx.restore();
         this.frameNum++;
-        if (this.frameNum >= 30) {
+        if (this.frameNum >= 20) {
             this.frameNum = 0;
         }
     };
@@ -56,4 +58,8 @@ class GopherAnimator {
 addEventListener('load', () => {
     const animator = new GopherAnimator;
     animator.start();
+
+    ipcRenderer.on('set-flipped', (_, msg) => {
+        animator.setFlipped(<boolean>msg);
+    });
 });
