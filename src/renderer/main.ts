@@ -62,4 +62,8 @@ addEventListener('load', () => {
     ipcRenderer.on('set-flipped', (_, msg) => {
         animator.setFlipped(<boolean>msg);
     });
+
+    ipcRenderer.on('set-walking', (_, msg) => {
+        animator.setWalking(<boolean>msg);
+    });
 });

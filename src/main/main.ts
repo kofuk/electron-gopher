@@ -5,19 +5,49 @@ enum Direction {
     RTOL = -1
 };
 
+enum JumpState {
+    None,
+    Jumping
+};
+
 type DisplayState = {
     mainWindow: BrowserWindow;
     dw: number;
     dh: number;
     xPos: number;
+    yPos: number;
     direction: Direction;
+    jump: JumpState;
+    framesSinceJumpStart: number;
 };
 
 const runGopher = (state: DisplayState) => {
     setTimeout(() => {runGopher(state);}, 33);
 
-    state.mainWindow.setPosition(state.xPos, state.dh - 200);
-    state.xPos = (state.xPos + 4 * state.direction) >> 0;
+    state.mainWindow.setPosition(state.xPos, state.yPos);
+
+    let dx = 4 * state.direction;
+
+    if (state.jump === JumpState.None) {
+        if (Math.random() < 0.007) {
+            state.jump = JumpState.Jumping;
+            state.framesSinceJumpStart = 0;
+            state.mainWindow.webContents.send('set-walking', false);
+        }
+    } else {
+        state.framesSinceJumpStart++;
+        if (state.framesSinceJumpStart > 60) {
+            state.jump = JumpState.None;
+            state.mainWindow.webContents.send('set-walking', true);
+            state.yPos = state.dh - 200;
+        } else {
+            dx /= 2;
+            state.yPos = state.dh - 200 - (Math.sin(state.framesSinceJumpStart / 60 * Math.PI) * 120) >> 0;
+        }
+    }
+
+    state.xPos += dx;
+
     if (state.direction === Direction.LTOR) {
         if (state.xPos >= state.dw - 200) {
             state.direction = Direction.RTOL;
@@ -58,7 +88,10 @@ const createWindow = () => {
         dw: width,
         dh: height,
         xPos: 0,
-        direction: Direction.LTOR
+        yPos: height - 200,
+        direction: Direction.LTOR,
+        jump: JumpState.None,
+        framesSinceJumpStart: 0,
     });
 };
 
