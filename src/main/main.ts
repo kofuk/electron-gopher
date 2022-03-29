@@ -49,12 +49,12 @@ const runGopher = (state: DisplayState) => {
     state.xPos += dx;
 
     if (state.direction === Direction.LTOR) {
-        if (state.xPos >= state.dw - 200) {
+        if (state.xPos >= state.dw - 200 || (state.jump !== JumpState.Jumping && Math.random() < 0.002)) {
             state.direction = Direction.RTOL;
             state.mainWindow.webContents.send('set-flipped', true);
         }
     } else {
-        if (state.xPos <= 0) {
+        if (state.xPos <= 0 || (state.jump !== JumpState.Jumping && Math.random() < 0.002)) {
             state.direction = Direction.LTOR;
             state.mainWindow.webContents.send('set-flipped', false);
         }
