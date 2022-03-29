@@ -16,7 +16,6 @@ const createWindow = () => {
     mainWindow.setAlwaysOnTop(true);
     mainWindow.setSkipTaskbar(true);
     mainWindow.setPosition(0, height - 200);
-    mainWindow.webContents.openDevTools();
     mainWindow.loadURL(`file://${__dirname}/index.html`);
 };
 
