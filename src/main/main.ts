@@ -19,14 +19,15 @@ type DisplayState = {
     direction: Direction;
     jump: JumpState;
     framesSinceJumpStart: number;
+    walkSpeed: number;
 };
 
 const runGopher = (state: DisplayState) => {
     setTimeout(() => {runGopher(state);}, 33);
 
-    state.mainWindow.setPosition(state.xPos, state.yPos);
+    state.mainWindow.setPosition(state.xPos >> 0, state.yPos >> 0);
 
-    let dx = 4 * state.direction;
+    let dx = state.walkSpeed * state.direction;
 
     if (state.jump === JumpState.None) {
         if (Math.random() < 0.007) {
@@ -42,7 +43,7 @@ const runGopher = (state: DisplayState) => {
             state.yPos = state.dh - 200;
         } else {
             dx /= 2;
-            state.yPos = state.dh - 200 - (Math.sin(state.framesSinceJumpStart / 60 * Math.PI) * 120) >> 0;
+            state.yPos = state.dh - 200 - (Math.sin(state.framesSinceJumpStart / 60 * Math.PI) * 120);
         }
     }
 
@@ -92,6 +93,7 @@ const createWindow = () => {
         direction: Direction.LTOR,
         jump: JumpState.None,
         framesSinceJumpStart: 0,
+        walkSpeed: 4 + (Math.random() - 0.5) * 1.5
     });
 };
 
