@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "target": "es2016",
+    "module": "CommonJS",
+    "esModuleInterop": true,
+    "moduleResolution": "Node",
+    "strict": true,
+    "outDir": "dist"
+  },
+  "ts-node": {
+    "compilerOptions": {
+      "module": "CommonJS"
+    }
+  }
+}
