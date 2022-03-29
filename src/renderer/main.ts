@@ -4,8 +4,10 @@ for (const [i, f] of gopherFrames.entries()) {
 }
 
 class GopherAnimator {
-    frameNum = 0;
-    frameReqId: number|undefined = undefined;
+    private frameNum = 0;
+    private frameReqId: number|undefined = undefined;
+    private flipped = false;
+    private walking = true;
 
     private requestNextFrame = () => {
         this.frameReqId = requestAnimationFrame(this.draw);
@@ -22,13 +24,28 @@ class GopherAnimator {
         }
     };
 
+    setFlipped = (flipped: boolean) => {
+        this.flipped = flipped;
+    };
+
+    setWalking = (walking: boolean) => {
+        this.walking = walking;
+    };
+
     draw = () => {
         this.requestNextFrame();
 
         const canvas = <HTMLCanvasElement>document.getElementById('canvas');
         const ctx = canvas.getContext('2d')!!;
         ctx.clearRect(0, 0, 200, 200);
-        ctx.drawImage(gopherFrames[Math.sin(this.frameNum / 30 * Math.PI) * 2.3 >> 0], 0, 0);
+        ctx.save();
+        if (this.flipped) {
+            ctx.scale(-1, 1);
+            ctx.translate(-200, 0);
+        }
+        const eFrameNum = this.walking ? (Math.sin(this.frameNum / 30 * Math.PI) * 2.3 >> 0) : 0;
+        ctx.drawImage(gopherFrames[eFrameNum], 0, 0);
+        ctx.restore();
         this.frameNum++;
         if (this.frameNum >= 30) {
             this.frameNum = 0;
