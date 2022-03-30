@@ -2,6 +2,9 @@ import {BrowserWindow, app} from 'electron';
 
 const env = process.env.NODE_ENV || 'development';
 
+// Using hardware acceleration with transparent window causes high CPU usage on Windows.
+app.disableHardwareAcceleration();
+
 enum Direction {
     LTOR = 1,
     RTOL = -1
