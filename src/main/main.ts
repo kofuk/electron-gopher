@@ -18,8 +18,7 @@ enum JumpState {
 type DisplayState = {
     mainWindow: BrowserWindow;
     timeoutId: NodeJS.Timeout|null;
-    dw: number;
-    dh: number;
+    displayBounds: Electron.Rectangle;
     xPos: number;
     yPos: number;
     direction: Direction;
@@ -30,6 +29,10 @@ type DisplayState = {
 
 const runGopher = (state: DisplayState) => {
     state.timeoutId = setTimeout(() => {runGopher(state);}, 33);
+
+    const dLeft = state.displayBounds.x;
+    const dRight = state.displayBounds.x + state.displayBounds.width;
+    const dBottom = state.displayBounds.y + state.displayBounds.height;
 
     state.mainWindow.setPosition(state.xPos >> 0, state.yPos >> 0);
 
@@ -46,22 +49,22 @@ const runGopher = (state: DisplayState) => {
         if (state.framesSinceJumpStart > 60) {
             state.jump = JumpState.None;
             state.mainWindow.webContents.send('set-walking', true);
-            state.yPos = state.dh - 200;
+            state.yPos = dBottom - 200;
         } else {
             dx /= 2;
-            state.yPos = state.dh - 200 - (Math.sin(state.framesSinceJumpStart / 60 * Math.PI) * 120);
+            state.yPos = dBottom - 200 - (Math.sin(state.framesSinceJumpStart / 60 * Math.PI) * 120);
         }
     }
 
     state.xPos += dx;
 
     if (state.direction === Direction.LTOR) {
-        if (state.xPos >= state.dw - 200 || (state.jump !== JumpState.Jumping && Math.random() < 0.002)) {
+        if (state.xPos >= dRight - 200 || (state.jump !== JumpState.Jumping && Math.random() < 0.002)) {
             state.direction = Direction.RTOL;
             state.mainWindow.webContents.send('set-flipped', true);
         }
     } else {
-        if (state.xPos <= 0 || (state.jump !== JumpState.Jumping && Math.random() < 0.002)) {
+        if (state.xPos <= dLeft || (state.jump !== JumpState.Jumping && Math.random() < 0.002)) {
             state.direction = Direction.LTOR;
             state.mainWindow.webContents.send('set-flipped', false);
         }
@@ -69,8 +72,6 @@ const runGopher = (state: DisplayState) => {
 };
 
 const createWindow = () => {
-    const {width, height} = screen.getPrimaryDisplay().workAreaSize;
-
     const mainWindow = new BrowserWindow({
         webPreferences: {
             nodeIntegration: true,
@@ -89,16 +90,16 @@ const createWindow = () => {
     }
     mainWindow.setAlwaysOnTop(true);
     mainWindow.setSkipTaskbar(true);
-    mainWindow.setPosition(0, height - 200);
     mainWindow.loadURL(`file://${__dirname}/index.html`);
+
+    const workArea = screen.getPrimaryDisplay().workArea;
 
     const state = {
         mainWindow,
         timeoutId: null,
-        dw: width,
-        dh: height,
-        xPos: 0,
-        yPos: height - 200,
+        displayBounds: workArea,
+        xPos: workArea.x,
+        yPos: workArea.y + workArea.width - 200,
         direction: Direction.LTOR,
         jump: JumpState.None,
         framesSinceJumpStart: 0,
