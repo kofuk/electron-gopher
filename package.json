@@ -7,7 +7,9 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "npm run dev && electron dist/main.js",
     "dev": "webpack --mode=development",
-    "dist": "webpack --mode=production && electron-builder"
+    "dist": "npm run dist:native",
+    "dist:native": "webpack --mode=production && electron-builder",
+    "dist:win": "webpack --mode=production && electron-builder -w"
   },
   "build": {
     "appId": "org.kofuk.electron-gopher",
