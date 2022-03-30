@@ -1,11 +1,12 @@
 {
   "compilerOptions": {
     "target": "es2016",
-    "module": "CommonJS",
     "esModuleInterop": true,
     "moduleResolution": "Node",
     "strict": true,
-    "outDir": "dist"
+    "outDir": "dist",
+    "noImplicitAny": true,
+    "strictNullChecks": true
   },
   "ts-node": {
     "compilerOptions": {
