@@ -4,12 +4,15 @@ const gopherFrames = [new Image, new Image, new Image];
 for (const [i, f] of gopherFrames.entries()) {
     f.src = `out0${i + 1}.png`;
 }
+const messageFrame = new Image;
+messageFrame.src = 'waiting.png';
 
 class GopherAnimator {
     private startTime = 0;
     private frameReqId: number|undefined = undefined;
     private flipped = false;
     private walking = true;
+    private showingMessage: boolean = false;
 
     private requestNextFrame = () => {
         this.frameReqId = requestAnimationFrame(this.draw);
@@ -35,6 +38,12 @@ class GopherAnimator {
         this.walking = walking;
     };
 
+    showMessage = (msg: string|null) => {
+        this.showingMessage = msg !== null;
+        document.getElementById('messageText')!.innerText = msg || '';
+
+    };
+
     draw = () => {
         this.requestNextFrame();
 
@@ -49,15 +58,20 @@ class GopherAnimator {
         const canvas = <HTMLCanvasElement>document.getElementById('canvas');
         const ctx = canvas.getContext('2d')!!;
         ctx.clearRect(0, 0, 200, 200);
-        ctx.save();
-        if (this.flipped) {
-            ctx.scale(-1, 1);
-            ctx.translate(-200, 0);
+
+        if (this.showingMessage) {
+            ctx.drawImage(messageFrame, 0, 0);
+        } else {
+            ctx.save();
+            if (this.flipped) {
+                ctx.scale(-1, 1);
+                ctx.translate(-200, 0);
+            }
+            const eFrameNum = this.walking ? (Math.sin(frameNum / 20 * Math.PI) * 2.3 >> 0) : 0;
+            ctx.translate(0, eFrameNum * 2);
+            ctx.drawImage(gopherFrames[eFrameNum], 0, 0);
+            ctx.restore();
         }
-        const eFrameNum = this.walking ? (Math.sin(frameNum / 20 * Math.PI) * 2.3 >> 0) : 0;
-        ctx.translate(0, eFrameNum * 2);
-        ctx.drawImage(gopherFrames[eFrameNum], 0, 0);
-        ctx.restore();
     };
 }
 
@@ -72,4 +86,8 @@ addEventListener('load', () => {
     ipcRenderer.on('set-walking', (_, msg) => {
         animator.setWalking(<boolean>msg);
     });
+
+    ipcRenderer.on('show-message', (_, msg) => {
+        animator.showMessage(<string|null>msg);
+    })
 });

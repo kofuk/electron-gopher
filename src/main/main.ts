@@ -36,10 +36,20 @@ type DisplayState = {
     framesSinceJumpStart: number;
     walkSpeed: number;
     msgQueue: Message[];
+    messagePostTime: number|null;
 };
 
 const runGopher = (state: DisplayState) => {
     state.timeoutId = setTimeout(() => {runGopher(state);}, 33);
+
+    if (state.messagePostTime !== null) {
+        if (Date.now() - state.messagePostTime < 2000) {
+            return;
+        } else {
+            state.mainWindow.webContents.send('show-message', null);
+            state.messagePostTime = null;
+        }
+    }
 
     const dLeft = state.displayBounds.x;
     const dRight = state.displayBounds.x + state.displayBounds.width;
@@ -57,7 +67,8 @@ const runGopher = (state: DisplayState) => {
                 state.framesSinceJumpStart = 0;
                 state.mainWindow.webContents.send('set-walking', false);
             } else if (msg.method === 'message') {
-                //TODO
+                state.messagePostTime = Date.now();
+                state.mainWindow.webContents.send('show-message', msg.message);
             }
         } else if (Math.random() < 0.007) {
             state.jump = JumpState.Jumping;
@@ -125,6 +136,7 @@ const createWindow = () => {
         framesSinceJumpStart: 0,
         walkSpeed: 5 + (Math.random() - 0.5) * 1.5,
         msgQueue: <Message[]>[],
+        messagePostTime: null
     };
 
     runGopher(state);
@@ -175,23 +187,49 @@ const getAllGophers = (): string[] => {
     return result;
 };
 
-const sendToAllGophers = (msg: Message) => {
-    const gophers = getAllGophers();
-    const promises: Promise<any>[] = [];
+function* sendToGophers(gophers: string[], msg: Message) {
     for (const gopher of gophers) {
-        promises.push(new Promise((resolve, _) => {
+        yield new Promise((resolve, reject) => {
             const sock = net.connect(gopher, () => {
                 sock.write(JSON.stringify(msg));
                 sock.destroy();
             });
+            sock.on('error', (err) => {
+                if (process.platform !== 'win32') {
+                    fs.unlinkSync(gopher);
+                }
+                reject(err);
+            });
             sock.on('close', () => {
                 resolve(0);
             });
-        }));
+        });
     }
-    Promise.all(promises).then((_) => {
+};
+
+const sendToAllGophers = (msg: Message) => {
+    const gophers = getAllGophers();
+    Promise.allSettled(sendToGophers(gophers, msg)).then((results) => {
+        for (const result of results) {
+            if (result.status === 'rejected') {
+                console.error('Failed to send message to a Gopher instance: ' + result.reason);
+            }
+        }
         process.exit(0);
     });
+};
+
+const sendToOneGopher = async (msg: Message) => {
+    const gophers = getAllGophers().map((e) => {return {e, v: Math.random()}}).sort((a, b) => a.v - b.v).map((e) => e.e);
+    for (const task of sendToGophers(gophers, msg)) {
+        try {
+            await task;
+        } catch(_: any) {
+            continue;
+        }
+        break;
+    }
+    process.exit(0);
 };
 
 const postJumpGopher = () => {
@@ -205,6 +243,13 @@ const postCloseGopher = () => {
         method: 'close'
     });
 };
+
+const postShowMessage = (msg: string) => {
+    sendToOneGopher({
+        method: 'message',
+        message: msg
+    })
+}
 
 const validFlags = ['--help', '-j', '-m',  '-x'];
 
@@ -223,6 +268,17 @@ if (validFlags.map((e) => process.argv.includes(e)).find((e) => e)) {
                 postJumpGopher();
             } else if (flag === '-x') {
                 postCloseGopher();
+            } else if (flag === '-m') {
+                for (let i = 0; i < process.argv.length; i++) {
+                    if (process.argv[i] == '-m') {
+                        if (i + 1 < process.argv.length) {
+                            postShowMessage(process.argv[i + 1]);
+                            break;
+                        } else {
+                            console.error('Message required.');
+                        }
+                    }
+                }
             }
         }
     }
