@@ -13,6 +13,7 @@
   },
   "build": {
     "appId": "org.kofuk.electron-gopher",
+    "productName": "Gopher",
     "files": [
       "dist/**/*",
       "node_modules/**/*"
