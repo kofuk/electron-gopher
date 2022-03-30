@@ -1,5 +1,7 @@
 import {BrowserWindow, app} from 'electron';
 
+const env = process.env.NODE_ENV || 'development';
+
 enum Direction {
     LTOR = 1,
     RTOL = -1
@@ -78,8 +80,12 @@ const createWindow = () => {
         width: 200,
         height: 200
     });
-    mainWindow.setIgnoreMouseEvents(true);
-    mainWindow.setFocusable(false);
+    if (env === 'development') {
+        mainWindow.webContents.openDevTools({mode: 'detach'});
+    } else {
+        mainWindow.setIgnoreMouseEvents(true);
+        mainWindow.setFocusable(false);
+    }
     mainWindow.setAlwaysOnTop(true);
     mainWindow.setSkipTaskbar(true);
     mainWindow.setPosition(0, height - 200);
