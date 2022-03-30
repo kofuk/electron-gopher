@@ -1,4 +1,4 @@
-import {BrowserWindow, app} from 'electron';
+import {BrowserWindow, app, screen} from 'electron';
 
 const env = process.env.NODE_ENV || 'development';
 
@@ -69,8 +69,6 @@ const runGopher = (state: DisplayState) => {
 };
 
 const createWindow = () => {
-    const {screen} = require('electron');
-
     const {width, height} = screen.getPrimaryDisplay().workAreaSize;
 
     const mainWindow = new BrowserWindow({
