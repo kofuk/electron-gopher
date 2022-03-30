@@ -103,7 +103,7 @@ const createWindow = () => {
         direction: Direction.LTOR,
         jump: JumpState.None,
         framesSinceJumpStart: 0,
-        walkSpeed: 4 + (Math.random() - 0.5) * 1.5
+        walkSpeed: 5 + (Math.random() - 0.5) * 1.5
     };
 
     runGopher(state);

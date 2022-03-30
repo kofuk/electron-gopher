@@ -46,6 +46,7 @@ class GopherAnimator {
             ctx.translate(-200, 0);
         }
         const eFrameNum = this.walking ? (Math.sin(this.frameNum / 20 * Math.PI) * 2.3 >> 0) : 0;
+        ctx.translate(0, eFrameNum * 2);
         ctx.drawImage(gopherFrames[eFrameNum], 0, 0);
         ctx.restore();
         this.frameNum++;
