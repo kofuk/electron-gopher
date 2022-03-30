@@ -12,6 +12,7 @@ enum JumpState {
 
 type DisplayState = {
     mainWindow: BrowserWindow;
+    timeoutId: NodeJS.Timeout|null;
     dw: number;
     dh: number;
     xPos: number;
@@ -23,7 +24,7 @@ type DisplayState = {
 };
 
 const runGopher = (state: DisplayState) => {
-    setTimeout(() => {runGopher(state);}, 33);
+    state.timeoutId = setTimeout(() => {runGopher(state);}, 33);
 
     state.mainWindow.setPosition(state.xPos >> 0, state.yPos >> 0);
 
@@ -84,8 +85,9 @@ const createWindow = () => {
     mainWindow.setPosition(0, height - 200);
     mainWindow.loadURL(`file://${__dirname}/index.html`);
 
-    runGopher({
+    const state = {
         mainWindow,
+        timeoutId: null,
         dw: width,
         dh: height,
         xPos: 0,
@@ -94,6 +96,14 @@ const createWindow = () => {
         jump: JumpState.None,
         framesSinceJumpStart: 0,
         walkSpeed: 4 + (Math.random() - 0.5) * 1.5
+    };
+
+    runGopher(state);
+
+    mainWindow.once('closed', () => {
+        if (state.timeoutId !== null) {
+            clearTimeout(state.timeoutId);
+        }
     });
 };
 
