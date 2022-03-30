@@ -1,9 +1,14 @@
 import {BrowserWindow, app, screen} from 'electron';
+import net from 'net';
+import fs from 'fs';
+import path from 'path';
 
 const env = process.env.NODE_ENV || 'development';
 
 // Using hardware acceleration with transparent window causes high CPU usage on Windows.
 app.disableHardwareAcceleration();
+
+const socketAddrBase = process.platform === 'win32' ? '\\\\.\\pipe\\gopher.' : '/tmp/gopher.';
 
 enum Direction {
     LTOR = 1,
@@ -13,6 +18,11 @@ enum Direction {
 enum JumpState {
     None,
     Jumping
+};
+
+type Message = {
+    method: string;
+    message?: string;
 };
 
 type DisplayState = {
@@ -25,6 +35,7 @@ type DisplayState = {
     jump: JumpState;
     framesSinceJumpStart: number;
     walkSpeed: number;
+    msgQueue: Message[];
 };
 
 const runGopher = (state: DisplayState) => {
@@ -39,7 +50,16 @@ const runGopher = (state: DisplayState) => {
     let dx = state.walkSpeed * state.direction;
 
     if (state.jump === JumpState.None) {
-        if (Math.random() < 0.007) {
+        if (state.msgQueue.length > 0) {
+            const msg = <Message>state.msgQueue.shift();
+            if (msg.method === 'jump') {
+                state.jump = JumpState.Jumping;
+                state.framesSinceJumpStart = 0;
+                state.mainWindow.webContents.send('set-walking', false);
+            } else if (msg.method === 'message') {
+                //TODO
+            }
+        } else if (Math.random() < 0.007) {
             state.jump = JumpState.Jumping;
             state.framesSinceJumpStart = 0;
             state.mainWindow.webContents.send('set-walking', false);
@@ -103,7 +123,8 @@ const createWindow = () => {
         direction: Direction.LTOR,
         jump: JumpState.None,
         framesSinceJumpStart: 0,
-        walkSpeed: 5 + (Math.random() - 0.5) * 1.5
+        walkSpeed: 5 + (Math.random() - 0.5) * 1.5,
+        msgQueue: <Message[]>[],
     };
 
     runGopher(state);
@@ -113,7 +134,104 @@ const createWindow = () => {
             clearTimeout(state.timeoutId);
         }
     });
+
+    const server = new net.Server();
+    server.on('connection', (socket: net.Socket) => {
+        let allData = '';
+        socket.on('data', (data: Buffer) => {
+            allData += data;
+        });
+        socket.on('end', () => {
+            try {
+                const msg = <Message>JSON.parse(allData);
+                if (msg.method === 'close') {
+                    mainWindow.close();
+                } else if (msg.method === 'jump') {
+                    state.msgQueue.push(msg);
+                } else if (msg.method === 'message') {
+                    if (msg.message === null) {
+                        throw 'Message must be set';
+                    }
+                    state.msgQueue.push(msg);
+                } else {
+                    throw 'Unknown method: ' + msg.method;
+                }
+            } catch (e: any) {
+                console.log(e);
+            }
+        });
+    });
+    server.listen(socketAddrBase + process.pid);
 };
 
-app.whenReady().then(createWindow);
-app.once('window-all-closed', () => app.quit());
+const getAllGophers = (): string[] => {
+    const prefix = process.platform === 'win32' ? '\\\\.\\pipe\\' : '/tmp';
+    const result: string[] = [];
+    for (const file of fs.readdirSync(prefix)) {
+        if (file.match(/^gopher\.[0-9]+/)) {
+            result.push(path.join(prefix, file));
+        }
+    }
+    return result;
+};
+
+const sendToAllGophers = (msg: Message) => {
+    const gophers = getAllGophers();
+    const promises: Promise<any>[] = [];
+    for (const gopher of gophers) {
+        promises.push(new Promise((resolve, _) => {
+            const sock = net.connect(gopher, () => {
+                sock.write(JSON.stringify(msg));
+                sock.destroy();
+            });
+            sock.on('close', () => {
+                resolve(0);
+            });
+        }));
+    }
+    Promise.all(promises).then((_) => {
+        process.exit(0);
+    });
+};
+
+const postJumpGopher = () => {
+    sendToAllGophers({
+        method: 'jump'
+    });
+};
+
+const postCloseGopher = () => {
+    sendToAllGophers({
+        method: 'close'
+    });
+};
+
+const validFlags = ['--help', '-j', '-m',  '-x'];
+
+if (validFlags.map((e) => process.argv.includes(e)).find((e) => e)) {
+    for (const flag of validFlags) {
+        if (process.argv.includes(flag)) {
+            if (flag === '--help') {
+                console.log('usage: electron-gopher      OR')
+                console.log('usage: electron-gopher -j   OR')
+                console.log('usage: electron-gopher -x')
+                console.log('')
+                console.log('-j    Jump Gopher')
+                console.log('-x    Exit all Gophers')
+                process.exit(0);
+            } else if (flag === '-j') {
+                postJumpGopher();
+            } else if (flag === '-x') {
+                postCloseGopher();
+            }
+        }
+    }
+} else {
+    app.whenReady().then(createWindow);
+    app.once('window-all-closed', () => {
+        if (process.platform !== 'win32') {
+            fs.unlinkSync(socketAddrBase + process.pid);
+        }
+        app.quit();
+    });
+}
