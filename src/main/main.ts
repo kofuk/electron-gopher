@@ -53,7 +53,7 @@ const runGopher = (state: DisplayState) => {
         }
     }
 
-    if (Math.random() < 0.0005) {
+    if (Math.random() < 0.0003) {
         const accessoryType = (Math.random() * (state.accessories.length + 1)) >> 0;
         if (accessoryType === 0) {
             state.mainWindow.webContents.send('set-accessory', null);
