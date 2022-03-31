@@ -20,6 +20,10 @@
     ],
     "linux": {
       "category": "Game"
+    },
+    "nsis": {
+      "oneClick": false,
+      "deleteAppDataOnUninstall": true
     }
   },
   "keywords": [],
