@@ -1,5 +1,18 @@
 import {ipcRenderer} from 'electron';
 
+
+type AccessoryLayoutOption = {
+    x: number;
+    y: number;
+    rotate: number;
+};
+
+type Accessory = {
+    name: string;
+    image: string;
+    layout: AccessoryLayoutOption[];
+};
+
 const gopherFrames = [new Image, new Image, new Image];
 for (const [i, f] of gopherFrames.entries()) {
     f.src = `out0${i + 1}.png`;
@@ -13,6 +26,8 @@ class GopherAnimator {
     private flipped = false;
     private walking = true;
     private showingMessage: boolean = false;
+    private accessory: Accessory|null = null;
+    private accessoryImage: HTMLImageElement|null = null;
 
     private requestNextFrame = () => {
         this.frameReqId = requestAnimationFrame(this.draw);
@@ -44,6 +59,38 @@ class GopherAnimator {
 
     };
 
+    setAccessory = (accessory: Accessory|null) => {
+        if (accessory == null) {
+            this.accessory = null;
+            this.accessoryImage = null;
+        } else {
+            this.accessory = accessory;
+            const image = new Image;
+            image.src = `accessories/${accessory.image}`;
+            this.accessoryImage = image;
+        }
+    };
+
+    private renderAccessory = (ctx: CanvasRenderingContext2D, eFrameNum: number) => {
+        if (this.accessory == null || this.accessoryImage == null || !this.accessoryImage.complete) {
+            return;
+        }
+
+        const image = this.accessoryImage!;
+
+        const layout = eFrameNum < this.accessory.layout.length
+            ? this.accessory.layout[eFrameNum]
+            : {x: 0, y: 0, rotate: 0};
+
+        ctx.save();
+        ctx.translate(layout.x, layout.y);
+        ctx.translate(image.width / 2, image.height / 2);
+        ctx.rotate(layout.rotate * Math.PI / 180);
+        ctx.translate(-image.width / 2, -image.height / 2);
+        ctx.drawImage(this.accessoryImage!, 0, 0);
+        ctx.restore();
+    };
+
     draw = () => {
         this.requestNextFrame();
 
@@ -70,6 +117,9 @@ class GopherAnimator {
             const eFrameNum = this.walking ? (Math.sin(frameNum / 20 * Math.PI) * 2.3 >> 0) : 0;
             ctx.translate(0, eFrameNum * 2);
             ctx.drawImage(gopherFrames[eFrameNum], 0, 0);
+
+            this.renderAccessory(ctx, eFrameNum);
+
             ctx.restore();
         }
     };
@@ -89,5 +139,9 @@ addEventListener('load', () => {
 
     ipcRenderer.on('show-message', (_, msg) => {
         animator.showMessage(<string|null>msg);
-    })
+    });
+
+    ipcRenderer.on('set-accessory', (_, msg) => {
+        animator.setAccessory(<Accessory|null>msg);
+    });
 });

@@ -36,6 +36,7 @@ type DisplayState = {
     walkSpeed: number;
     msgQueue: Message[];
     messagePostTime: number|null;
+    accessories: any[];
 };
 
 const runGopher = (state: DisplayState) => {
@@ -47,6 +48,15 @@ const runGopher = (state: DisplayState) => {
         } else {
             state.mainWindow.webContents.send('show-message', null);
             state.messagePostTime = null;
+        }
+    }
+
+    if (Math.random() < 0.0005) {
+        const accessoryType = (Math.random() * (state.accessories.length + 1)) >> 0;
+        if (accessoryType === 0) {
+            state.mainWindow.webContents.send('set-accessory', null);
+        } else {
+            state.mainWindow.webContents.send('set-accessory', state.accessories[accessoryType - 1]);
         }
     }
 
@@ -101,6 +111,18 @@ const runGopher = (state: DisplayState) => {
     }
 };
 
+const loadAccessories = (): any[] => {
+    let result: any[] = [];
+    try {
+        const data = fs.readFileSync('dist/accessories/accessories.json', {encoding: 'utf-8'});
+        result = JSON.parse(data);
+    } catch (e: any) {
+        console.error('Failed to read accessories');
+        console.error(e);
+    }
+    return result;
+}
+
 const createWindow = () => {
     const mainWindow = new BrowserWindow({
         webPreferences: {
@@ -135,7 +157,8 @@ const createWindow = () => {
         framesSinceJumpStart: 0,
         walkSpeed: 5 + (Math.random() - 0.5) * 1.5,
         msgQueue: <Message[]>[],
-        messagePostTime: null
+        messagePostTime: null,
+        accessories: loadAccessories()
     };
 
     runGopher(state);

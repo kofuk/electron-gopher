@@ -49,6 +49,7 @@ module.exports = (env, argv) => {
                     {from: 'src/renderer/out02.png', to: path.resolve(__dirname, 'dist')},
                     {from: 'src/renderer/out03.png', to: path.resolve(__dirname, 'dist')},
                     {from: 'src/renderer/waiting.png', to: path.resolve(__dirname, 'dist')},
+                    {from: 'src/accessories', to: path.resolve(__dirname, 'dist/accessories')}
                 ]
             })
         ]
