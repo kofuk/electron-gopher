@@ -67,6 +67,7 @@ const runGopher = (state: DisplayState) => {
     const dBottom = state.displayBounds.y + state.displayBounds.height;
 
     state.mainWindow.setPosition(state.xPos >> 0, state.yPos >> 0);
+    state.mainWindow.setSize(200, 200);
 
     let dx = state.walkSpeed * state.direction;
 
@@ -139,9 +140,7 @@ const createWindow = () => {
             contextIsolation: false,
         },
         transparent: true,
-        frame: false,
-        width: 200,
-        height: 200
+        frame: false
     });
     if (env === 'development') {
         mainWindow.webContents.openDevTools({mode: 'detach'});
@@ -149,6 +148,7 @@ const createWindow = () => {
         mainWindow.setIgnoreMouseEvents(true);
         mainWindow.setFocusable(false);
     }
+    mainWindow.setSize(200, 200);
     mainWindow.setAlwaysOnTop(true);
     mainWindow.setSkipTaskbar(true);
     mainWindow.loadURL(`file://${__dirname}/index.html`);
