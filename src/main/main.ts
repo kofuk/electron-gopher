@@ -1,7 +1,6 @@
 import {BrowserWindow, app, screen} from 'electron';
 import net from 'net';
 import fs from 'fs';
-import path from 'path';
 
 const env = process.env.NODE_ENV || 'development';
 
@@ -176,118 +175,10 @@ const createWindow = () => {
     server.listen(socketAddrBase + process.pid);
 };
 
-const getAllGophers = (): string[] => {
-    const prefix = process.platform === 'win32' ? '\\\\.\\pipe\\' : '/tmp';
-    const result: string[] = [];
-    for (const file of fs.readdirSync(prefix)) {
-        if (file.match(/^gopher\.[0-9]+/)) {
-            result.push(path.join(prefix, file));
-        }
+app.whenReady().then(createWindow);
+app.once('window-all-closed', () => {
+    if (process.platform !== 'win32') {
+        fs.unlinkSync(socketAddrBase + process.pid);
     }
-    return result;
-};
-
-function* sendToGophers(gophers: string[], msg: Message) {
-    for (const gopher of gophers) {
-        yield new Promise((resolve, reject) => {
-            const sock = net.connect(gopher, () => {
-                sock.write(JSON.stringify(msg));
-                sock.destroy();
-            });
-            sock.on('error', (err) => {
-                if (process.platform !== 'win32') {
-                    fs.unlinkSync(gopher);
-                }
-                reject(err);
-            });
-            sock.on('close', () => {
-                resolve(0);
-            });
-        });
-    }
-};
-
-const sendToAllGophers = (msg: Message) => {
-    const gophers = getAllGophers();
-    Promise.allSettled(sendToGophers(gophers, msg)).then((results) => {
-        for (const result of results) {
-            if (result.status === 'rejected') {
-                console.error('Failed to send message to a Gopher instance: ' + result.reason);
-            }
-        }
-        process.exit(0);
-    });
-};
-
-const sendToOneGopher = async (msg: Message) => {
-    const gophers = getAllGophers().map((e) => {return {e, v: Math.random()}}).sort((a, b) => a.v - b.v).map((e) => e.e);
-    for (const task of sendToGophers(gophers, msg)) {
-        try {
-            await task;
-        } catch(_: any) {
-            continue;
-        }
-        break;
-    }
-    process.exit(0);
-};
-
-const postJumpGopher = () => {
-    sendToAllGophers({
-        method: 'jump'
-    });
-};
-
-const postCloseGopher = () => {
-    sendToAllGophers({
-        method: 'close'
-    });
-};
-
-const postShowMessage = (msg: string) => {
-    sendToOneGopher({
-        method: 'message',
-        message: msg
-    })
-}
-
-const validFlags = ['--help', '-j', '-m',  '-x'];
-
-if (validFlags.map((e) => process.argv.includes(e)).find((e) => e)) {
-    for (const flag of validFlags) {
-        if (process.argv.includes(flag)) {
-            if (flag === '--help') {
-                console.log('usage: electron-gopher      OR')
-                console.log('usage: electron-gopher -j   OR')
-                console.log('usage: electron-gopher -x')
-                console.log('')
-                console.log('-j    Jump Gopher')
-                console.log('-x    Exit all Gophers')
-                process.exit(0);
-            } else if (flag === '-j') {
-                postJumpGopher();
-            } else if (flag === '-x') {
-                postCloseGopher();
-            } else if (flag === '-m') {
-                for (let i = 0; i < process.argv.length; i++) {
-                    if (process.argv[i] == '-m') {
-                        if (i + 1 < process.argv.length) {
-                            postShowMessage(process.argv[i + 1]);
-                            break;
-                        } else {
-                            console.error('Message required.');
-                        }
-                    }
-                }
-            }
-        }
-    }
-} else {
-    app.whenReady().then(createWindow);
-    app.once('window-all-closed', () => {
-        if (process.platform !== 'win32') {
-            fs.unlinkSync(socketAddrBase + process.pid);
-        }
-        app.quit();
-    });
-}
+    app.quit();
+});
