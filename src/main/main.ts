@@ -1,6 +1,7 @@
 import {BrowserWindow, app, screen} from 'electron';
 import net from 'net';
 import fs from 'fs';
+import path from 'path';
 
 const env = process.env.NODE_ENV || 'development';
 
@@ -122,7 +123,7 @@ const runGopher = (state: DisplayState) => {
 const loadAccessories = (): any[] => {
     let result: any[] = [];
     try {
-        const data = fs.readFileSync('dist/accessories/accessories.json', {encoding: 'utf-8'});
+        const data = fs.readFileSync(path.resolve(__dirname, 'accessories/accessories.json'), {encoding: 'utf-8'});
         result = JSON.parse(data);
     } catch (e: any) {
         console.error('Failed to read accessories');
