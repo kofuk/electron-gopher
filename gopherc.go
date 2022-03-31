@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"os"
 	"strconv"
+	"time"
 )
 
 type Method string
@@ -30,6 +31,8 @@ type Gopher interface {
 
 func main() {
 	gopher := NewGopher()
+
+	rand.Seed(time.Now().Unix())
 
 	for i := 1; i < len(os.Args); i++ {
 		curFlag := os.Args[i]
