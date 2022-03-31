@@ -6,7 +6,7 @@ import (
 	"github.com/Microsoft/go-winio"
 )
 
-type WindowsGopher struct {}
+type WindowsGopher struct{}
 
 func (WindowsGopher) GetGophers() ([]string, error) {
 	return findNamedPipes("gopher.")

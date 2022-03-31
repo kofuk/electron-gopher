@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 )
 
-type UnixGopher struct {}
+type UnixGopher struct{}
 
 func (UnixGopher) GetGophers() ([]string, error) {
 	dirents, err := os.ReadDir("/tmp")
@@ -21,7 +21,7 @@ func (UnixGopher) GetGophers() ([]string, error) {
 	for _, ent := range dirents {
 		name := ent.Name()
 		if len(name) > 7 && name[:7] == "gopher." {
-			result = append(result, filepath.Join("/tmp", name));
+			result = append(result, filepath.Join("/tmp", name))
 		}
 	}
 

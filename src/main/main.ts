@@ -21,7 +21,8 @@ enum JumpState {
 
 type Message = {
     method: string;
-    message?: string;
+    message: string|null;
+    accessory: number|null;
 };
 
 type DisplayState = {
@@ -78,6 +79,13 @@ const runGopher = (state: DisplayState) => {
             } else if (msg.method === 'message') {
                 state.messagePostTime = Date.now();
                 state.mainWindow.webContents.send('show-message', msg.message);
+            } else if (msg.method === 'accessory') {
+                const accessoryType = msg.accessory! <= state.accessories.length ? msg.accessory! : 0;
+                if (accessoryType === 0) {
+                    state.mainWindow.webContents.send('set-accessory', null);
+                } else {
+                    state.mainWindow.webContents.send('set-accessory', state.accessories[accessoryType - 1]);
+                }
             }
         } else if (Math.random() < 0.007) {
             state.jump = JumpState.Jumping;
@@ -185,6 +193,11 @@ const createWindow = () => {
                 } else if (msg.method === 'message') {
                     if (msg.message === null) {
                         throw 'Message must be set';
+                    }
+                    state.msgQueue.push(msg);
+                } else if (msg.method === 'accessory') {
+                    if (msg.accessory == null) {
+                        msg.accessory = 0;
                     }
                     state.msgQueue.push(msg);
                 } else {
