@@ -1,5 +1,6 @@
-import {ipcRenderer} from 'electron';
+import './index.css';
 
+import {ipcRenderer} from 'electron';
 
 type AccessoryLayoutOption = {
     x: number;
@@ -15,10 +16,10 @@ type Accessory = {
 
 const gopherFrames = [new Image, new Image, new Image];
 for (const [i, f] of gopherFrames.entries()) {
-    f.src = `out0${i + 1}.png`;
+    f.src = `res/frame${i + 1}.png`;
 }
 const messageFrame = new Image;
-messageFrame.src = 'waiting.png';
+messageFrame.src = 'res/waiting.png';
 
 class GopherAnimator {
     private startTime = 0;
@@ -66,7 +67,7 @@ class GopherAnimator {
         } else {
             this.accessory = accessory;
             const image = new Image;
-            image.src = `accessories/${accessory.image}`;
+            image.src = `res/accessories/${accessory.image}`;
             this.accessoryImage = image;
         }
     };

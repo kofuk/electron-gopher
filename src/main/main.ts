@@ -188,7 +188,7 @@ class GopherController {
 const loadAccessories = (): any[] => {
     let result: any[] = [];
     try {
-        const data = fs.readFileSync(path.resolve(__dirname, 'accessories/accessories.json'), {encoding: 'utf-8'});
+        const data = fs.readFileSync(path.resolve(__dirname, 'res/accessories/accessories.json'), {encoding: 'utf-8'});
         result = JSON.parse(data);
     } catch (e: any) {
         console.error('Failed to read accessories');

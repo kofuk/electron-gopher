@@ -17,6 +17,10 @@ module.exports = (env, argv) => {
                     test: /\.ts$/,
                     exclude: path.resolve(__dirname, 'node_modules'),
                     use: 'ts-loader'
+                },
+                {
+                    test: /\.css$/,
+                    use: ['style-loader', 'css-loader']
                 }
             ]
         }
@@ -44,12 +48,7 @@ module.exports = (env, argv) => {
             new CopyPlugin({
                 patterns: [
                     {from: 'src/renderer/index.html', to: path.resolve(__dirname, 'dist')},
-                    {from: 'src/renderer/index.css', to: path.resolve(__dirname, 'dist')},
-                    {from: 'src/renderer/out01.png', to: path.resolve(__dirname, 'dist')},
-                    {from: 'src/renderer/out02.png', to: path.resolve(__dirname, 'dist')},
-                    {from: 'src/renderer/out03.png', to: path.resolve(__dirname, 'dist')},
-                    {from: 'src/renderer/waiting.png', to: path.resolve(__dirname, 'dist')},
-                    {from: 'src/accessories', to: path.resolve(__dirname, 'dist/accessories')}
+                    {from: 'src/res', to: path.resolve(__dirname, 'dist/res')}
                 ]
             })
         ]
