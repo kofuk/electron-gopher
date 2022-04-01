@@ -19,5 +19,26 @@
         "rotate": -30
       }
     ]
+  },
+  {
+    "name": "gopher",
+    "image": "gopher.png",
+    "layout": [
+      {
+        "x": 90,
+        "y": 90,
+        "rotate": 2
+      },
+      {
+        "x": 95,
+        "y": 75,
+        "rotate": 4
+      },
+      {
+        "x": 90,
+        "y": 65,
+        "rotate": 6
+      }
+    ]
   }
 ]
