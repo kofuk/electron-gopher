@@ -23,7 +23,9 @@
     },
     "nsis": {
       "oneClick": false,
-      "deleteAppDataOnUninstall": true
+      "deleteAppDataOnUninstall": true,
+      "allowToChangeInstallationDirectory" : true,
+      "license": "LICENSE"
     }
   },
   "keywords": [],

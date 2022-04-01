@@ -26,100 +26,164 @@ type Message = {
     accessory: number|null;
 };
 
-type DisplayState = {
-    mainWindow: BrowserWindow;
-    timeoutId: NodeJS.Timeout|null;
-    displayBounds: Electron.Rectangle;
-    xPos: number;
-    yPos: number;
-    direction: Direction;
-    jump: JumpState;
-    framesSinceJumpStart: number;
-    walkSpeed: number;
-    msgQueue: Message[];
-    messagePostTime: number|null;
-    accessories: any[];
-};
+class GopherController {
+    private mainWindow: BrowserWindow;
+    private timeoutId: NodeJS.Timeout|null = null;
+    private displayBounds: Electron.Rectangle;
+    private xPos: number;
+    private yPos: number;
+    private direction: Direction;
+    private jumpState: JumpState;
+    private framesSinceJumpStart: number = 0;
+    private walkSpeed: number;
+    private msgQueue: Message[] = [];
+    private messagePostTime: number|null = null;
+    private accessories: any[] = [];
 
-const runGopher = (state: DisplayState) => {
-    state.timeoutId = setTimeout(() => {runGopher(state);}, 33);
+    constructor(mainWindow: BrowserWindow, displayBounds: Electron.Rectangle) {
+        this.mainWindow = mainWindow;
+        this.displayBounds = displayBounds;
+        this.xPos = displayBounds.x;
+        this.yPos = displayBounds.y + displayBounds.width - 200;
+        this.direction = Direction.LTOR;
+        this.jumpState = JumpState.None;
+        this.walkSpeed = 5;
+    };
 
-    if (state.messagePostTime !== null) {
-        if (Date.now() - state.messagePostTime < 2000) {
-            return;
-        } else {
-            state.mainWindow.webContents.send('show-message', null);
-            state.messagePostTime = null;
+    setWalkSpeed = (speed: number) => {
+        this.walkSpeed = speed;
+    };
+
+    setAccessories = (accessories: any[]) => {
+        this.accessories = accessories;
+    };
+
+    private changeDirection = () => {
+        this.direction = this.direction == Direction.LTOR ? Direction.RTOL : Direction.LTOR;
+        this.mainWindow.webContents.send('set-flipped', this.direction == Direction.RTOL);
+    };
+
+    private randomOccurrence = (rate: number): boolean =>  {
+        return Math.random() < rate;
+    };
+
+    private jump = () => {
+        this.jumpState = JumpState.Jumping;
+        this.framesSinceJumpStart = 0;
+        this.mainWindow.webContents.send('set-walking', false);
+    };
+
+    private finishJump = () => {
+        this.jumpState = JumpState.None;
+        this.mainWindow.webContents.send('set-walking', true);
+    };
+
+    private handleWalkDirection = () => {
+        const left = this.displayBounds.x;
+        const right = this.displayBounds.x + this.displayBounds.width;
+
+        const isRightmost = this.direction === Direction.LTOR && this.xPos >= right - 200;
+        const isLeftmost = this.direction === Direction.RTOL && this.xPos <= left;
+        const shouldRandomTurn = this.jumpState !== JumpState.Jumping && this.randomOccurrence(0.002);
+
+        if (isRightmost || isLeftmost || shouldRandomTurn) {
+            this.changeDirection();
         }
-    }
+    };
 
-    if (Math.random() < 0.0003) {
-        const accessoryType = (Math.random() * (state.accessories.length + 1)) >> 0;
+    private attachAccessory = (accessoryType: number) => {
         if (accessoryType === 0) {
-            state.mainWindow.webContents.send('set-accessory', null);
+            this.mainWindow.webContents.send('set-accessory', null);
         } else {
-            state.mainWindow.webContents.send('set-accessory', state.accessories[accessoryType - 1]);
+            this.mainWindow.webContents.send('set-accessory', this.accessories[accessoryType - 1]);
         }
-    }
+    };
 
-    const dLeft = state.displayBounds.x;
-    const dRight = state.displayBounds.x + state.displayBounds.width;
-    const dBottom = state.displayBounds.y + state.displayBounds.height;
+    private attachRandomAccessory = () => {
+        const accessoryType = (Math.random() * (this.accessories.length + 1)) >> 0;
+        this.attachAccessory(accessoryType);
+    };
 
-    state.mainWindow.setPosition(state.xPos >> 0, state.yPos >> 0);
-    state.mainWindow.setSize(200, 200);
+    private say = (text: string) => {
+        this.messagePostTime = Date.now();
+        this.mainWindow.webContents.send('show-message', text);
 
-    let dx = state.walkSpeed * state.direction;
+    };
 
-    if (state.jump === JumpState.None) {
-        if (state.msgQueue.length > 0) {
-            const msg = <Message>state.msgQueue.shift();
-            if (msg.method === 'jump') {
-                state.jump = JumpState.Jumping;
-                state.framesSinceJumpStart = 0;
-                state.mainWindow.webContents.send('set-walking', false);
-            } else if (msg.method === 'message') {
-                state.messagePostTime = Date.now();
-                state.mainWindow.webContents.send('show-message', msg.message);
-            } else if (msg.method === 'accessory') {
-                const accessoryType = msg.accessory! <= state.accessories.length ? msg.accessory! : 0;
-                if (accessoryType === 0) {
-                    state.mainWindow.webContents.send('set-accessory', null);
-                } else {
-                    state.mainWindow.webContents.send('set-accessory', state.accessories[accessoryType - 1]);
-                }
+    private unsay = () => {
+        this.mainWindow.webContents.send('show-message', null);
+        this.messagePostTime = null;
+    };
+
+    private handleMessage = (): boolean => {
+        if (this.msgQueue.length == 0) {
+            return false;
+        }
+
+        const msg = <Message>this.msgQueue.shift();
+        if (msg.method === 'jump') {
+            this.jump();
+        } else if (msg.method === 'message') {
+            this.say(msg.message!);
+        } else if (msg.method === 'accessory') {
+            const accessoryType = msg.accessory! <= this.accessories.length ? msg.accessory! : 0;
+            this.attachAccessory(accessoryType);
+        }
+
+        return true;
+    };
+
+    run = () => {
+        this.timeoutId = setTimeout(this.run, 33);
+
+        if (this.messagePostTime !== null) {
+            if (Date.now() - this.messagePostTime < 2000) {
+                return;
+            } else {
+                this.unsay();
             }
-        } else if (Math.random() < 0.007) {
-            state.jump = JumpState.Jumping;
-            state.framesSinceJumpStart = 0;
-            state.mainWindow.webContents.send('set-walking', false);
         }
-    } else {
-        state.framesSinceJumpStart++;
-        if (state.framesSinceJumpStart > 60) {
-            state.jump = JumpState.None;
-            state.mainWindow.webContents.send('set-walking', true);
-            state.yPos = dBottom - 200;
+
+        this.mainWindow.setPosition(this.xPos >> 0, this.yPos >> 0);
+        this.mainWindow.setSize(200, 200);
+
+        let dx = this.walkSpeed * this.direction;
+
+        if (this.jumpState == JumpState.None) {
+            if (!this.handleMessage() && this.randomOccurrence(0.007)) {
+                this.jump();
+            }
         } else {
-            dx /= 2;
-            state.yPos = dBottom - 200 - (Math.sin(state.framesSinceJumpStart / 60 * Math.PI) * 120);
-        }
-    }
+            this.framesSinceJumpStart++;
 
-    state.xPos += dx;
+            const bottom = this.displayBounds.y + this.displayBounds.height;
+            if (this.framesSinceJumpStart > 60) {
+                this.finishJump();
+                this.yPos = bottom - 200;
+            } else {
+                dx /= 2;
+                this.yPos = bottom - 200 - (Math.sin(this.framesSinceJumpStart / 60 * Math.PI) * 120);
+            }
+        }
 
-    if (state.direction === Direction.LTOR) {
-        if (state.xPos >= dRight - 200 || (state.jump !== JumpState.Jumping && Math.random() < 0.002)) {
-            state.direction = Direction.RTOL;
-            state.mainWindow.webContents.send('set-flipped', true);
+        this.xPos += dx;
+
+        this.handleWalkDirection();
+        if (this.randomOccurrence(0.0003)) {
+            this.attachRandomAccessory();
         }
-    } else {
-        if (state.xPos <= dLeft || (state.jump !== JumpState.Jumping && Math.random() < 0.002)) {
-            state.direction = Direction.LTOR;
-            state.mainWindow.webContents.send('set-flipped', false);
+    };
+
+    stop = () => {
+        if (this.timeoutId != null) {
+            clearTimeout(this.timeoutId!);
         }
-    }
-};
+    };
+
+    postMessage = (msg: Message) => {
+        this.msgQueue.push(msg);
+    };
+}
 
 const loadAccessories = (): any[] => {
     let result: any[] = [];
@@ -155,27 +219,13 @@ const createWindow = () => {
 
     const workArea = screen.getPrimaryDisplay().workArea;
 
-    const state = {
-        mainWindow,
-        timeoutId: null,
-        displayBounds: workArea,
-        xPos: workArea.x,
-        yPos: workArea.y + workArea.width - 200,
-        direction: Direction.LTOR,
-        jump: JumpState.None,
-        framesSinceJumpStart: 0,
-        walkSpeed: 5 + (Math.random() - 0.5) * 1.5,
-        msgQueue: <Message[]>[],
-        messagePostTime: null,
-        accessories: loadAccessories()
-    };
-
-    runGopher(state);
+    const gopher = new GopherController(mainWindow, workArea);
+    gopher.setAccessories(loadAccessories());
+    gopher.setWalkSpeed(5 + (Math.random() - 0.5) * 1.5);
+    gopher.run();
 
     mainWindow.once('closed', () => {
-        if (state.timeoutId !== null) {
-            clearTimeout(state.timeoutId);
-        }
+        gopher.stop();
     });
 
     const server = new net.Server();
@@ -190,17 +240,17 @@ const createWindow = () => {
                 if (msg.method === 'close') {
                     mainWindow.close();
                 } else if (msg.method === 'jump') {
-                    state.msgQueue.push(msg);
+                    gopher.postMessage(msg);
                 } else if (msg.method === 'message') {
                     if (msg.message === null) {
                         throw 'Message must be set';
                     }
-                    state.msgQueue.push(msg);
+                    gopher.postMessage(msg);
                 } else if (msg.method === 'accessory') {
                     if (msg.accessory == null) {
                         msg.accessory = 0;
                     }
-                    state.msgQueue.push(msg);
+                    gopher.postMessage(msg);
                 } else {
                     throw 'Unknown method: ' + msg.method;
                 }
